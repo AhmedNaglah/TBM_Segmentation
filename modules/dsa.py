@@ -54,7 +54,7 @@ class DSAItem(DSA):
         self.svsBase = config['svsBase']
         self.annoRow = self.getAnnotationByLayerName(self.fid, self.layerName)
         self.annoElems = self.annoRow['annotation']['elements']
-        self.annotations = self.convertAnnotations(self.getAnnotationByLayerName(self.fid, self.layerName))
+        self.annotations = self.convertAnnotationsCV(self.getAnnotationByLayerName(self.fid, self.layerName))
         self.s = openslide.open_slide(f"{self.svsBase}/{self.svsname}")
 
     def getAnnotationByLayerName(self, id, name):
@@ -85,6 +85,13 @@ class DSAItem(DSA):
             if len(k)>4:
                 annos_.append(shapely.Polygon(k))
         return annos_
+    
+    def convertAnnotationsCV(self, anno):
+        annos = anno['annotation']['elements']
+        annos_2 = []
+        for a in annos:
+            annos_2.append(np.array([[k[0], k[1]] for k in a['points']], dtype=np.int32))
+        return annos_2
     
     def extract(self):
         outputdir = self.config['outputdir']

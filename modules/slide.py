@@ -108,3 +108,32 @@ class Slide:
 
         
         return self.patches
+
+    def createBinary(self, cnts):
+        mask = np.zeros([self.s.level_dimensions[0][1], self.s.level_dimensions[0][0], 3], dtype='uint8')
+        cv2.drawContours(mask, cnts, -1, [255,255,255], -1)
+        self.binary = mask
+        return
+
+    def extractPairs(self, patchSize):
+        (w, h) = self.s.level_dimensions[0]
+        wn = w//patchSize
+        hn = h//patchSize
+        self.threTissueSmoothResized = cv2.resize(self.threTissueSmooth, (wn, hn)) # Resize Binary Mask to align with Patches
+        
+        self.patches = {}
+
+        for ix in range(wn):
+            for iy in range(hn):
+                if self.threTissueSmoothResized[iy, ix]==255:
+                    x = ix*patchSize
+                    y = iy*patchSize
+                    size = (patchSize, patchSize)
+                    level = 0
+                    location = (x,y)
+
+                    im = cv2.cvtColor(np.array(self.s.read_region(location, level, size))[:,:,:3], cv2.COLOR_RGB2BGR)
+                    msk = self.binary[y:y+patchSize, x:x+patchSize, :]
+                    self.patches[f'{x}_{y}'] = cv2.hconcat((im, msk))
+        
+        return self.patches
