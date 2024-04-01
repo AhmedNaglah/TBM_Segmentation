@@ -43,7 +43,7 @@ def GANInference(im, checkpoint_path): # Takes BGR image and Return BGR
     he_ = np.expand_dims(im_, axis=0)
     print("4")
 
-    mt_virtual = cycleGAN(he_)
+    mt_virtual = cycleGAN.predict(he_)
     print("5")
 
     mt_virtual_ = TF2CV(mt_virtual)
@@ -133,7 +133,7 @@ def segmentTBMPair(im):
 def segmentTBMPairLUT(im):
 
     def applyThresholdEosin(patch):
-        lower = 230
+        lower = 170
         upper = 255
         mask = cv2.inRange(patch, lower, upper)
         
@@ -170,7 +170,7 @@ def segmentTBMPairLUT(im):
     msk = im[:, wn:, :]
     im = im[:, :wn, :]
 
-    thresholdArea = 0.0001
+    thresholdArea = 0.01
 
     xp = [0, 64, 128, 192, 255]
     fp = [0, 16, 128, 240, 255]
@@ -290,102 +290,120 @@ def applyThreshold(patch):
     except:
         print("Except inside apply threshold")  
 
-parser = argparse.ArgumentParser(
-                    prog='DSA FTU Annotations to Patches',
-                    description='Extract DSA FTU Annotations to Patches',
-                    epilog='Text at the bottom of help')
 
-parser.add_argument('--svsBase', help='/blue/pinaki.sarder/...')     
-parser.add_argument('--fid', help='folder id in DSA')     
-parser.add_argument('--outputdir', help='/orange/pinaki.sarder/ahmed.naglah/...')     
-parser.add_argument('--username', help='username')     
-parser.add_argument('--password', help='password')
-parser.add_argument('--patchSize', help='patchSize', type=int, default=512)
-parser.add_argument('--thresholdArea', help='thresholdArea', type=float, default=0.3)
-parser.add_argument('--spatialResolution', help='spatialResolution', type=float, default=0.25)      
-parser.add_argument('--apiUrl', help='https://athena.rc.ufl.edu/api/v1')   
-parser.add_argument('--name', help='a name for the pipeline', default='defaultNaglahPipeline')     
-parser.add_argument('--layerName', help='annotation layer on DSA', type=str)
-parser.add_argument('--checkpoint_path', help='checkpoint_path', type=str)
+def main():
 
-args = parser.parse_args()
+    parser = argparse.ArgumentParser(
+                        prog='DSA FTU Annotations to Patches',
+                        description='Extract DSA FTU Annotations to Patches',
+                        epilog='Text at the bottom of help')
 
-config = vars(args)
+    parser.add_argument('--svsBase', help='/blue/pinaki.sarder/...')     
+    parser.add_argument('--fid', help='folder id in DSA')     
+    parser.add_argument('--outputdir', help='/orange/pinaki.sarder/ahmed.naglah/...')     
+    parser.add_argument('--username', help='username')     
+    parser.add_argument('--password', help='password')
+    parser.add_argument('--patchSize', help='patchSize', type=int, default=512)
+    parser.add_argument('--thresholdArea', help='thresholdArea', type=float, default=0.3)
+    parser.add_argument('--spatialResolution', help='spatialResolution', type=float, default=0.25)      
+    parser.add_argument('--apiUrl', help='https://athena.rc.ufl.edu/api/v1')   
+    parser.add_argument('--name', help='a name for the pipeline', default='defaultNaglahPipeline')     
+    parser.add_argument('--layerName', help='annotation layer on DSA', type=str)
+    parser.add_argument('--checkpoint_path', help='checkpoint_path', type=str)
 
-outdir = config['outputdir']
+    args = parser.parse_args()
 
-if not os.path.exists(outdir):
-    os.mkdir(outdir)
+    config = vars(args)
 
-dsa = DSA(config)
+    outdir = config['outputdir']
 
-dsaFolder = DSAFolder(config)
-items = dsaFolder.items
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
 
-for i in range(len(items)):
-    fid, svsname = items[i]
+    dsa = DSA(config)
 
-    try:
-        item = DSAItem(config, fid, svsname)
-        anno = item.annotations
+    dsaFolder = DSAFolder(config)
+    items = dsaFolder.items
 
-        if len(anno)>0:
-            slide = Slide(config, svsname)
+    for i in range(len(items)):
+        fid, svsname = items[i]
 
-            slide.extractForeground()
+        try:
+            item = DSAItem(config, fid, svsname)
+            anno = item.annotations
 
-            slide.createBinary(anno)
+            if len(anno)>0:
+                slide = Slide(config, svsname)
 
-            patches = slide.extractPairs(config['patchSize'])
+                slide.extractForeground()
 
-            print(len(patches))
+                slide.createBinary(anno)
 
-            contoursColors = []
-            print(f"Processing patches starting ... ")
-            for key in patches:
-                logging.warning(f"Processing patches ... {key}")
-                patch = patches[key]
-                print(f"Processing patches ... {key}")
-                #patchGAN = GANInference(patch, config['checkpoint_path'])
+                patches = slide.extractPairs(config['patchSize'])
 
-                def normalize(input_image):
-                    input_image = (input_image / 127.5) - 1
+                print(len(patches))
 
-                    return input_image
+                contoursColors = []
+                print(f"Processing patches starting ... ")
+                for key in patches:
+                    try:
+                        logging.warning(f"Processing patches ... {key}")
+                        patch = patches[key]
+                        print(f"Processing patches ... {key}")
+                        #patchGAN = GANInference(patch, config['checkpoint_path'])
 
-                def TF2CV(im):
-                    img = tf.cast(tf.math.scalar_mul(255/2, im[0]+1), dtype=tf.uint8)
-                    img_ = np.array(tf.keras.utils.array_to_img(img),dtype='uint8')
-                    #img_ = cv2.cvtColor(img_, cv2.COLOR_RGB2BGR)
-                    return img_
+                        def normalize(input_image):
+                            input_image = (input_image / 127.5) - 1
 
-                print("1 | GANInference | w/o main")
-                cycleGAN = cycleGAN512()
-                cycleGAN.built = True
-                print("2")
-                print(config['checkpoint_path'])
-                cycleGAN.load_weights(config['checkpoint_path'])
-                print("3")
+                            return input_image
 
-                # Model is always trained on RGB internally but expect BGR
-                im_ = normalize(patch)
-                he_ = np.expand_dims(im_, axis=0)
-                print("4")
+                        def TF2CV(im):
+                            img = tf.cast(tf.math.scalar_mul(255/2, im[0]+1), dtype=tf.uint8)
+                            img_ = np.array(tf.keras.utils.array_to_img(img),dtype='uint8')
+                            #img_ = cv2.cvtColor(img_, cv2.COLOR_RGB2BGR)
+                            return img_
 
-                mt_virtual = cycleGAN(he_)
-                print("5")
+                        print("1 | GANInference | w/o main")
+                        cycleGAN = cycleGAN512()
+                        cycleGAN.built = True
+                        print("2")
+                        print(config['checkpoint_path'])
+                        cycleGAN.load_weights(config['checkpoint_path'])
+                        print("3")
 
-                patchGAN = TF2CV(mt_virtual)
-                print("6")
+                        # Model is always trained on RGB internally but expect BGR
 
-                contours = segmentTBMPairLUT(patchGAN)
-                x, y = key.split('_')
-                contoursColors.append({'x': int(x), 'y': int(y) , 'cnt': contours, 'color': '255, 20, 20'})
-                #cv2.imwrite(f"{outdir}/{key}.png", patchGAN)
-            annos = generateAnno(contoursColors)
-            dsa.postAnno(fid, annos)
-        else:
-            logging.warning(f"No annotation found in {fid} __ {svsname}")
-    except:
-        logging.warning(f"Exeption in {fid} __ {svsname}")
+                        _, w, _ = np.shape(patch)
+                        wn = w//2
+                        imOnly = patch[:, :wn, :]
+                        maskOnly = patch[:, wn:, :]
+
+                        im_ = normalize(imOnly)
+                        he_ = np.expand_dims(im_, axis=0)
+                        print("4")
+
+                        mt_virtual = cycleGAN(he_)
+                        print("5")
+
+                        patchGAN = TF2CV(mt_virtual)
+                        print("6")
+
+                        patchGANPair = cv2.hconcat((patchGAN, maskOnly))
+                        print("7")
+
+                        contours = segmentTBMPairLUT(patchGANPair)
+                        x, y = key.split('_')
+                        contoursColors.append({'x': int(x), 'y': int(y) , 'cnt': contours, 'color': '255, 20, 20'})
+                        #cv2.imwrite(f"{outdir}/{key}.png", patchGAN)
+                    except Exception as e:
+                        print(e)
+                annos = generateAnno(contoursColors)
+                dsa.postAnno(fid, annos)
+            else:
+                logging.warning(f"No annotation found in {fid} __ {svsname}")
+        except:
+            logging.warning(f"Exeption in {fid} __ {svsname}")
+
+if __name__=="__main__":
+    main()
 

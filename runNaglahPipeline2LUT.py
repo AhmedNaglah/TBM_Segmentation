@@ -13,7 +13,7 @@ import argparse
 import histomicstk as htk
 
 
-def segmentTBMPair(im):
+def segmentTBM(im):
 
     def applyThresholdEosin(patch):
         lower = 170
@@ -46,19 +46,8 @@ def segmentTBMPair(im):
 
         return eosinStain
 
-    _, w, _ = np.shape(im)
-
-    wn = w//2
-
-    msk = im[:, wn:, :]
-    im = im[:, :wn, :]
-
     thresholdArea = 0.0001
 
-    #xp = [0, 64, 128, 192, 255]
-    #fp = [0, 16, 128, 240, 255]
-    #x = np.arange(256)
-    #table = np.interp(x, xp, fp).astype('uint8')
     #imgYuv = cv2.cvtColor(im, cv2.COLOR_BGR2YUV)
     #imgYuv[:,:,0] = cv2.equalizeHist(imgYuv[:,:,0])
     #imEquBGR = cv2.cvtColor(imgYuv, cv2.COLOR_YUV2BGR)
@@ -67,7 +56,6 @@ def segmentTBMPair(im):
 
     eosin = stainDeconv(im)
     #eosinEqu = cv2.equalizeHist(eosin)
-    #eosinEqu = cv2.LUT(eosin, table)
 
     mask = applyThresholdEosin(eosin)
     maskSmooth = smoothBinary(mask)
@@ -89,89 +77,7 @@ def segmentTBMPair(im):
         area = cv2.contourArea(contour)
         if area > area_min:
             if area > amin:
-                msk_ = msk*0
-                interThickness = 1
-                cv2.drawContours(msk_, [contour], -1, [255,255,255], interThickness)
-                if np.sum(msk_*msk)>0:
-                    contours_filtered.append((contour,hie))
-
-    return contours_filtered
-
-def segmentTBMPairLUT(im):
-
-    def applyThresholdEosin(patch):
-        lower = 170
-        upper = 255
-        mask = cv2.inRange(patch, lower, upper)
-        
-        return np.array(255-mask, dtype='uint8')
-
-    def smoothBinary(mask):
-        kn = 2
-        iterat = 2
-        kernel = np.ones((kn, kn), np.uint8) 
-        for _ in range(iterat):
-            mask = cv2.erode(mask, kernel, iterations=1) 
-            mask = cv2.dilate(mask, kernel, iterations=1) 
-        return mask
-
-    def stainDeconv(im_):
-        stain_color_map = htk.preprocessing.color_deconvolution.stain_color_map
-
-        stains = ['hematoxylin',  # nuclei stain
-                    'eosin',        # cytoplasm stain
-                    'null']         # set to null if input contains only two stains
-
-        W = np.array([stain_color_map[st] for st in stains]).T
-
-        imDeconvolved = htk.preprocessing.color_deconvolution.color_deconvolution(im_, W)
-
-        eosinStain = imDeconvolved.Stains[:, :, 1]
-
-        return eosinStain
-
-    _, w, _ = np.shape(im)
-
-    wn = w//2
-
-    msk = im[:, wn:, :]
-    im = im[:, :wn, :]
-
-    thresholdArea = 0.0001
-
-    xp = [0, 64, 128, 192, 255]
-    fp = [0, 16, 128, 240, 255]
-    x = np.arange(256)
-    table = np.interp(x, xp, fp).astype('uint8')
-
-    eosin = stainDeconv(im)
-    eosinEqu = cv2.LUT(eosin, table)
-
-    mask = applyThresholdEosin(eosinEqu)
-    maskSmooth = smoothBinary(mask)
-    mask3d = cv2.cvtColor(maskSmooth, cv2.COLOR_GRAY2RGB)
-    eosin3 = cv2.cvtColor(eosin, cv2.COLOR_GRAY2RGB)
-
-    #contours, _ = cv2.findContours(maskSmooth, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    #contours, hierarchy = cv2.findContours(maskSmooth, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    contours, hierarchy = cv2.findContours(maskSmooth, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    c_max = max(contours, key = cv2.contourArea)
-    area_min = cv2.contourArea(c_max) * thresholdArea
-
-    contours_filtered = []
-
-    amin = 100
-
-    for contour, hie in zip(contours, hierarchy[0]):
-        area = cv2.contourArea(contour)
-        if area > area_min:
-            if area > amin:
-                msk_ = msk*0
-                interThickness = 2
-                cv2.drawContours(msk_, [contour], -1, [255,255,255], interThickness)
-                if np.sum(msk_*msk)>0:
-                    contours_filtered.append((contour,hie))
+                contours_filtered.append((contour,hie))
 
     return contours_filtered
 
@@ -192,8 +98,8 @@ def generateAnno(contoursColors):
                 points = []
                 for i in cnt:
                     for j in i:
-                        x = int(j[0]) + contoursColors[q]['x'] 
-                        y = int(j[1]) + contoursColors[q]['y'] 
+                        x = int(j[0]) + contoursColors[q]['x'] - 6
+                        y = int(j[1]) + contoursColors[q]['y'] - 6
                         points.append([x, y, 0])
 
                 elem = {
@@ -224,8 +130,8 @@ def generateAnno(contoursColors):
                                 break
                             for i in cntChild:
                                 for j in i:
-                                    x = int(j[0]) + contoursColors[q]['x'] 
-                                    y = int(j[1]) + contoursColors[q]['y'] 
+                                    x = int(j[0]) + contoursColors[q]['x'] - 6
+                                    y = int(j[1]) + contoursColors[q]['y'] - 6
                                     hole.append([x, y, 0])
                             holes.append(hole)
                             z+=1
@@ -233,8 +139,8 @@ def generateAnno(contoursColors):
                     elems.append(elem)
 
     anno = {
-        "name": 'model1+model2', 
-        "description": 'model1+model2',  
+        "name": 'tbm', 
+        "description": 'tbm',  
         "elements": None                        
     }
     anno["elements"] = elems
@@ -273,7 +179,6 @@ def main():
     parser.add_argument('--spatialResolution', help='spatialResolution', type=float, default=0.25)      
     parser.add_argument('--apiUrl', help='https://athena.rc.ufl.edu/api/v1')   
     parser.add_argument('--name', help='a name for the pipeline', default='defaultNaglahPipeline')     
-    parser.add_argument('--layerName', help='annotation layer on DSA', type=str)
 
     args = parser.parse_args()
 
@@ -289,41 +194,42 @@ def main():
     dsaFolder = DSAFolder(config)
     items = dsaFolder.items
 
-    for i in range(len(items)):
-        fid, svsname = items[i]
+    ftr = config['name']
 
+    for i in range(len(items)):
         try:
 
-            item = DSAItem(config, fid, svsname)
-            anno = item.annotations
+            fid, svsname = items[i]
 
-            if len(anno)>0:
-                slide = Slide(config, svsname)
+            slide = Slide(config, svsname)
 
-                slide.extractForeground()
+            _ = slide.extractForeground()
 
-                slide.createBinary(anno)
+            patches = slide.extractPatches(config['patchSize'])
 
-                patches = slide.extractPairs(config['patchSize'])
+            print(len(patches))
 
-                print(len(patches))
+            contoursColors = {}
 
-                contoursColors = []
-                for key in patches:
-                    try:
-                        patch = patches[key]
-                        contours = segmentTBMPair(patch)
-                        x, y = key.split('_')
-                        contoursColors.append({'x': int(x), 'y': int(y) , 'cnt': contours, 'color': '255, 20, 20'})
-                        cv2.imwrite(f"{outdir}/{key}.png", patch)
-                    except:
-                        pass
-                annos = generateAnno(contoursColors)
-                dsa.postAnno(fid, annos)
-            else:
-                logging.warning(f"No annotation found in {fid} __ {svsname}")
+            contoursColors = []
+
+            errorN = 0
+            for key in patches:
+                try:
+                    patch = patches[key]
+
+                    contours = segmentTBM(patch)
+                    
+                    x, y = key.split('_')
+                    contoursColors.append({'x': int(x), 'y': int(y) , 'cnt': contours, 'color': '255, 20, 20'})
+                except:
+                    errorN+=1
+            print(errorN)
+            annos = generateAnno(contoursColors)
+            dsa.postAnno(fid, annos)
         except:
-            logging.warning(f"Exeption in {fid} __ {svsname}")
+            fid, svsname = items[i]
+            print(f'error in item #{i} fid {fid} svs {svsname}')
 
 if __name__=="__main__":
     main()

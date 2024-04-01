@@ -14,13 +14,12 @@ module load conda
 
 conda activate wsi
 
-conda run python "/orange/pinaki.sarder/ahmed.naglah/projects/TBM_Segmentation/runTBMPaired.py" \
+conda run python "/orange/pinaki.sarder/ahmed.naglah/projects/TBM_Segmentation/runNaglahPipeline2LUT.py" \
     --svsBase "/blue/pinaki.sarder/nlucarelli/kpmp_new/" \
     --fid "65fc511dd2f45e99a916b258" \
-    --outputdir "/orange/pinaki.sarder/ahmed.naglah/data/tbmSegPaired" \
+    --outputdir "/orange/pinaki.sarder/ahmed.naglah/data/tbm2" \
     --username ${DSA_USERNAME} \
     --password ${DSA_PW} \
     --apiUrl ${DSA_URL} \
     --patchSize 512 \
-    --layerName "tubules" \
-    --name "tbmSegPaired"
+    --name "tbm"

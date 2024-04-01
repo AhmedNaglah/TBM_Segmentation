@@ -18,6 +18,7 @@ class Slide:
         for _ in range(iterat):
             mask = cv2.erode(mask, kernel, iterations=1) 
             mask = cv2.dilate(mask, kernel, iterations=1) 
+        mask = cv2.dilate(mask, kernel, iterations=5) # Final Dilation Step  May Remove
         return mask
 
     def extractForeground(self):
@@ -106,7 +107,6 @@ class Slide:
                     location = (x,y)
                     self.patches[f'{x}_{y}'] = cv2.cvtColor(np.array(self.s.read_region(location, level, size))[:,:,:3], cv2.COLOR_RGB2BGR)
 
-        
         return self.patches
 
     def createBinary(self, cnts):

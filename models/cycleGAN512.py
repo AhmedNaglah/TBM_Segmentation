@@ -16,6 +16,9 @@ class cycleGAN512(cycleGANBase):
         self.discriminator_a = patchgan_discriminator_512(norm_type='instancenorm')
         self.discriminator_b = patchgan_discriminator_512(norm_type='instancenorm')
 
+    def predict(self, inputs):
+        return self.generator_g(inputs)
+
     def call(self, inputs):
         x2_ = self.generator_g(inputs)
         return x2_

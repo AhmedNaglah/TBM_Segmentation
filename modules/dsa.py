@@ -52,6 +52,7 @@ class DSAItem(DSA):
         self.svsname = svsname
         self.name = svsname.replace('.svs', '')
         self.svsBase = config['svsBase']
+        self.annotationsShapely = self.convertAnnotations(self.getAnnotationByLayerName(self.fid, self.layerName))
         self.annoRow = self.getAnnotationByLayerName(self.fid, self.layerName)
         self.annoElems = self.annoRow['annotation']['elements']
         self.annotations = self.convertAnnotationsCV(self.getAnnotationByLayerName(self.fid, self.layerName))
@@ -159,7 +160,7 @@ class DSAItem(DSA):
         return w, h
 
     def getPatchMask(self, tid):
-        polygon1 = self.annotations[tid]
+        polygon1 = self.annotationsShapely[tid]
         x,y = polygon1.exterior.xy
         bb = polygon1.bounds
 

@@ -1,12 +1,12 @@
 #!/bin/sh 
 #SBATCH --account=pinaki.sarder 
-#SBATCH --job-name=GANSeg
-#SBATCH --output=GANSeg%j.log
+#SBATCH --job-name=GANSeg2
+#SBATCH --output=GANSeg2%j.log
 #SBATCH --ntasks=1
-#SBATCH --mem=120gb
+#SBATCH --mem=20gb
+#SBATCH --gpus=geforce 
+#SBATCH --partition=gpu
 #SBATCH --time=72:00:00
-#SBATCH --cpus-per-task=8
-#SBATCH --partition=hpg-default
 
 date;hostname;pwd
 
@@ -23,5 +23,5 @@ conda run python ./runTBMPairedGAN.py \
     --apiUrl ${DSA_URL} \
     --patchSize 512 \
     --layerName "tubules" \
-    --name "GANSeg2" \
+    --name "GANSeg222" \
     --checkpoint_path "/orange/pinaki.sarder/ahmed.naglah/data/kpmpCycleGAN/output_kpmpCycleGAN3/training_checkpoints/ckpt-1"

@@ -7,11 +7,49 @@ from modules.dsa import DSAFolder, DSAItem, DSA
 import cv2
 import numpy as np
 
-import pandas as pd
 import argparse
 
 import histomicstk as htk
+import os
+import tensorflow as tf
+import numpy as np
+import cv2
+from models.cycleGAN512 import cycleGAN512
 
+def GANInference(im, checkpoint_path): # Takes BGR image and Return BGR
+    from models.cycleGAN512 import cycleGAN512
+
+    def normalize(input_image):
+        input_image = (input_image / 127.5) - 1
+
+        return input_image
+
+    def TF2CV(im):
+        img = tf.cast(tf.math.scalar_mul(255/2, im[0]+1), dtype=tf.uint8)
+        img_ = np.array(tf.keras.utils.array_to_img(img),dtype='uint8')
+        #img_ = cv2.cvtColor(img_, cv2.COLOR_RGB2BGR)
+        return img_
+
+    print("1 | GANInference")
+    cycleGAN = cycleGAN512()
+    cycleGAN.built = True
+    print("2")
+    print(checkpoint_path)
+    cycleGAN.load_weights(checkpoint_path)
+    print("3")
+
+    # Model is always trained on RGB internally but expect BGR
+    im_ = normalize(im)
+    he_ = np.expand_dims(im_, axis=0)
+    print("4")
+
+    mt_virtual = cycleGAN.predict(he_)
+    print("5")
+
+    mt_virtual_ = TF2CV(mt_virtual)
+    print("6")
+
+    return mt_virtual_
 
 def segmentTBMPair(im):
 
@@ -53,12 +91,8 @@ def segmentTBMPair(im):
     msk = im[:, wn:, :]
     im = im[:, :wn, :]
 
-    thresholdArea = 0.0001
+    thresholdArea = 0.01
 
-    #xp = [0, 64, 128, 192, 255]
-    #fp = [0, 16, 128, 240, 255]
-    #x = np.arange(256)
-    #table = np.interp(x, xp, fp).astype('uint8')
     #imgYuv = cv2.cvtColor(im, cv2.COLOR_BGR2YUV)
     #imgYuv[:,:,0] = cv2.equalizeHist(imgYuv[:,:,0])
     #imEquBGR = cv2.cvtColor(imgYuv, cv2.COLOR_YUV2BGR)
@@ -67,7 +101,6 @@ def segmentTBMPair(im):
 
     eosin = stainDeconv(im)
     #eosinEqu = cv2.equalizeHist(eosin)
-    #eosinEqu = cv2.LUT(eosin, table)
 
     mask = applyThresholdEosin(eosin)
     maskSmooth = smoothBinary(mask)
@@ -90,7 +123,7 @@ def segmentTBMPair(im):
         if area > area_min:
             if area > amin:
                 msk_ = msk*0
-                interThickness = 1
+                interThickness = 24
                 cv2.drawContours(msk_, [contour], -1, [255,255,255], interThickness)
                 if np.sum(msk_*msk)>0:
                     contours_filtered.append((contour,hie))
@@ -100,7 +133,7 @@ def segmentTBMPair(im):
 def segmentTBMPairLUT(im):
 
     def applyThresholdEosin(patch):
-        lower = 170
+        lower = 230
         upper = 255
         mask = cv2.inRange(patch, lower, upper)
         
@@ -233,8 +266,8 @@ def generateAnno(contoursColors):
                     elems.append(elem)
 
     anno = {
-        "name": 'model1+model2', 
-        "description": 'model1+model2',  
+        "name": 'tbmPairedLUT', 
+        "description": 'tbmPairedLUT',  
         "elements": None                        
     }
     anno["elements"] = elems
@@ -257,27 +290,21 @@ def applyThreshold(patch):
     except:
         print("Except inside apply threshold")  
 
+
 def main():
-    parser = argparse.ArgumentParser(
-                        prog='DSA FTU Annotations to Patches',
-                        description='Extract DSA FTU Annotations to Patches',
-                        epilog='Text at the bottom of help')
 
-    parser.add_argument('--svsBase', help='/blue/pinaki.sarder/...')     
-    parser.add_argument('--fid', help='folder id in DSA')     
-    parser.add_argument('--outputdir', help='/orange/pinaki.sarder/ahmed.naglah/...')     
-    parser.add_argument('--username', help='username')     
-    parser.add_argument('--password', help='password')
-    parser.add_argument('--patchSize', help='patchSize', type=int, default=512)
-    parser.add_argument('--thresholdArea', help='thresholdArea', type=float, default=0.3)
-    parser.add_argument('--spatialResolution', help='spatialResolution', type=float, default=0.25)      
-    parser.add_argument('--apiUrl', help='https://athena.rc.ufl.edu/api/v1')   
-    parser.add_argument('--name', help='a name for the pipeline', default='defaultNaglahPipeline')     
-    parser.add_argument('--layerName', help='annotation layer on DSA', type=str)
-
-    args = parser.parse_args()
-
-    config = vars(args)
+    config = {
+        "svsBase": "/blue/pinaki.sarder/nlucarelli/kpmp_new/",
+        "fid": "65fc4d4ed2f45e99a916b24c",
+        "outputdir": "/orange/pinaki.sarder/ahmed.naglah/data/GANGAN3",
+        "username": "ahmednaglah",
+        "password": "Netzwork_171819",
+        "apiUrl": "https://athena.rc.ufl.edu/api/v1",
+        "patchSize": 512 ,
+        "layerName": "tubules" ,
+        "name": "GANSeg222" ,
+        "checkpoint_path": "/orange/pinaki.sarder/ahmed.naglah/data/kpmpCycleGAN/output_kpmpCycleGAN3/training_checkpoints/ckpt-1"
+    }
 
     outdir = config['outputdir']
 
@@ -293,7 +320,6 @@ def main():
         fid, svsname = items[i]
 
         try:
-
             item = DSAItem(config, fid, svsname)
             anno = item.annotations
 
@@ -309,15 +335,47 @@ def main():
                 print(len(patches))
 
                 contoursColors = []
+                print(f"Processing patches starting ... ")
                 for key in patches:
-                    try:
-                        patch = patches[key]
-                        contours = segmentTBMPair(patch)
-                        x, y = key.split('_')
-                        contoursColors.append({'x': int(x), 'y': int(y) , 'cnt': contours, 'color': '255, 20, 20'})
-                        cv2.imwrite(f"{outdir}/{key}.png", patch)
-                    except:
-                        pass
+                    logging.warning(f"Processing patches ... {key}")
+                    patch = patches[key]
+                    print(f"Processing patches ... {key}")
+                    #patchGAN = GANInference(patch, config['checkpoint_path'])
+
+                    def normalize(input_image):
+                        input_image = (input_image / 127.5) - 1
+
+                        return input_image
+
+                    def TF2CV(im):
+                        img = tf.cast(tf.math.scalar_mul(255/2, im[0]+1), dtype=tf.uint8)
+                        img_ = np.array(tf.keras.utils.array_to_img(img),dtype='uint8')
+                        #img_ = cv2.cvtColor(img_, cv2.COLOR_RGB2BGR)
+                        return img_
+
+                    print("1 | GANInference | w/o main")
+                    cycleGAN = cycleGAN512()
+                    cycleGAN.built = True
+                    print("2")
+                    print(config['checkpoint_path'])
+                    cycleGAN.load_weights(config['checkpoint_path'])
+                    print("3")
+
+                    # Model is always trained on RGB internally but expect BGR
+                    im_ = normalize(patch)
+                    he_ = np.expand_dims(im_, axis=0)
+                    print("4")
+
+                    mt_virtual = cycleGAN(he_)
+                    print("5")
+
+                    patchGAN = TF2CV(mt_virtual)
+                    print("6")
+
+                    contours = segmentTBMPairLUT(patchGAN)
+                    x, y = key.split('_')
+                    contoursColors.append({'x': int(x), 'y': int(y) , 'cnt': contours, 'color': '255, 20, 20'})
+                    #cv2.imwrite(f"{outdir}/{key}.png", patchGAN)
                 annos = generateAnno(contoursColors)
                 dsa.postAnno(fid, annos)
             else:
@@ -327,3 +385,4 @@ def main():
 
 if __name__=="__main__":
     main()
+

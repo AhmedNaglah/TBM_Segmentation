@@ -16,15 +16,15 @@ import histomicstk as htk
 def segmentTBM(im):
 
     def applyThresholdEosin(patch):
-        lower = 200
+        lower = 170
         upper = 255
         mask = cv2.inRange(patch, lower, upper)
         
         return np.array(255-mask, dtype='uint8')
 
     def smoothBinary(mask):
-        kn = 4
-        iterat = 6
+        kn = 2
+        iterat = 2
         kernel = np.ones((kn, kn), np.uint8) 
         for _ in range(iterat):
             mask = cv2.erode(mask, kernel, iterations=1) 
@@ -46,7 +46,7 @@ def segmentTBM(im):
 
         return eosinStain
 
-    thresholdArea = 0.02
+    thresholdArea = 0.0001
 
     #imgYuv = cv2.cvtColor(im, cv2.COLOR_BGR2YUV)
     #imgYuv[:,:,0] = cv2.equalizeHist(imgYuv[:,:,0])
@@ -55,12 +55,12 @@ def segmentTBM(im):
     #eosin = stainDeconv(imEquBGR)
 
     eosin = stainDeconv(im)
-    eosinEqu = cv2.equalizeHist(eosin)
+    #eosinEqu = cv2.equalizeHist(eosin)
 
-    mask = applyThresholdEosin(eosinEqu)
+    mask = applyThresholdEosin(eosin)
     maskSmooth = smoothBinary(mask)
     mask3d = cv2.cvtColor(maskSmooth, cv2.COLOR_GRAY2RGB)
-    eosin3 = cv2.cvtColor(eosinEqu, cv2.COLOR_GRAY2RGB)
+    eosin3 = cv2.cvtColor(eosin, cv2.COLOR_GRAY2RGB)
 
     #contours, _ = cv2.findContours(maskSmooth, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     #contours, hierarchy = cv2.findContours(maskSmooth, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -98,8 +98,8 @@ def generateAnno(contoursColors):
                 points = []
                 for i in cnt:
                     for j in i:
-                        x = int(j[0]) + contoursColors[q]['x'] - 6
-                        y = int(j[1]) + contoursColors[q]['y'] - 6
+                        x = int(j[0]) + contoursColors[q]['x'] 
+                        y = int(j[1]) + contoursColors[q]['y'] 
                         points.append([x, y, 0])
 
                 elem = {
@@ -130,8 +130,8 @@ def generateAnno(contoursColors):
                                 break
                             for i in cntChild:
                                 for j in i:
-                                    x = int(j[0]) + contoursColors[q]['x'] - 6
-                                    y = int(j[1]) + contoursColors[q]['y'] - 6
+                                    x = int(j[0]) + contoursColors[q]['x'] 
+                                    y = int(j[1]) + contoursColors[q]['y'] 
                                     hole.append([x, y, 0])
                             holes.append(hole)
                             z+=1
@@ -139,8 +139,8 @@ def generateAnno(contoursColors):
                     elems.append(elem)
 
     anno = {
-        "name": 'tbm', 
-        "description": 'tbm',  
+        "name": 'model2_clean2', 
+        "description": 'model2_clean2',  
         "elements": None                        
     }
     anno["elements"] = elems
