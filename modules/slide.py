@@ -34,7 +34,7 @@ class Slide:
 
         self.threTissueSmooth = self.smoothBinary(threTissue)
 
-        thresholdArea = 0.7
+        thresholdArea = 0.2
         contours, _ = cv2.findContours(self.threTissueSmooth, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
         c_max = max(contours, key = cv2.contourArea)
