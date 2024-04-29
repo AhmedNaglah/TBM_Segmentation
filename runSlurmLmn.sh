@@ -16,7 +16,7 @@ conda activate wsi
 
 conda run python "/orange/pinaki.sarder/ahmed.naglah/projects/TBM_Segmentation/runNaglahPipeline3.py" \
     --svsBase "/blue/pinaki.sarder/nlucarelli/kpmp_new/" \
-    --fid "65f20738d2f45e99a9d80c44" \
+    --fid "65fc511dd2f45e99a916b258" \
     --outputdir "/orange/pinaki.sarder/ahmed.naglah/data/tbm2" \
     --username ${DSA_USERNAME} \
     --password ${DSA_PW} \

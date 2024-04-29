@@ -1,0 +1,9 @@
+Mon Apr 29 10:48:20 EDT 2024
+c0706a-s9.ufhpc
+/orange/pinaki.sarder/ahmed.naglah/projects/TBM_Segmentation
+Traceback (most recent call last):
+  File "/orange/pinaki.sarder/ahmed.naglah/projects/TBM_Segmentation/runNaglahPipeline3.py", line 3, in <module>
+    from modules.ftu import Tubule
+ModuleNotFoundError: No module named 'modules'
+
+ERROR conda.cli.main_run:execute(124): `conda run python /orange/pinaki.sarder/ahmed.naglah/projects/TBM_Segmentation/runNaglahPipeline3.py --svsBase /blue/pinaki.sarder/nlucarelli/kpmp_new/ --fid 65fc511dd2f45e99a916b258 --outputdir /orange/pinaki.sarder/ahmed.naglah/data/tbm2 --username ahmednaglah --password Netzwork_171819 --apiUrl https://athena.rc.ufl.edu/api/v1 --patchSize 512 --name lmn` failed. (See above for error)
